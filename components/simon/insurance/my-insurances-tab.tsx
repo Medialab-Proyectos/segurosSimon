@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Shield, FileText, Download, LifeBuoy, Eye, X, AlertTriangle, Bell, BellOff, Calendar, Clock, Phone, MessageCircle } from "lucide-react"
+import {
+  Shield, FileText, Download, Eye, X, AlertTriangle,
+  Bell, BellOff, Calendar, Clock, Phone, MessageCircle, LifeBuoy,
+} from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 // ─── Status types aligned with backend contract ───────────────────────────────
-// EXPIRING_SOON: triggered 30 days before expiration
 type InsuranceStatus = "ACTIVE" | "EXPIRING_SOON" | "EXPIRED"
 
 interface Insurance {
@@ -14,15 +16,30 @@ interface Insurance {
   type: string
   policyNumber: string
   status: InsuranceStatus
-  expiryDate: string
+  expiryDate: string   // stored as "17 Mar 2025" — displayed via formatDateLong
   daysLeft?: number
-  // premium is intentionally omitted — NPM backend cannot provide this reliably (MVP)
   icon: typeof Shield
   iconBg: string
   iconColor: string
   isSoat: boolean
 }
 
+// ─── Date helper ──────────────────────────────────────────────────────────────
+// Input: "17 Mar 2025" | Output: "17 de marzo de 2025"
+function formatDateLong(dateStr: string): string {
+  const monthMap: Record<string, string> = {
+    Ene: "enero",  Feb: "febrero",  Mar: "marzo",   Abr: "abril",
+    May: "mayo",   Jun: "junio",    Jul: "julio",   Ago: "agosto",
+    Sep: "septiembre", Oct: "octubre", Nov: "noviembre", Dic: "diciembre",
+    Jan: "enero",  Apr: "abril",    Aug: "agosto",
+  }
+  const parts = dateStr.split(" ")
+  if (parts.length !== 3) return dateStr
+  const [day, mon, year] = parts
+  return `${day} de ${monthMap[mon] ?? mon.toLowerCase()} de ${year}`
+}
+
+// ─── Mock data ────────────────────────────────────────────────────────────────
 const insurances: Insurance[] = [
   {
     id: "1",
@@ -41,7 +58,7 @@ const insurances: Insurance[] = [
     type: "Seguro Todo Riesgo",
     policyNumber: "STR-2025-0334",
     status: "ACTIVE",
-    expiryDate: "15 Dic 2025",
+    expiryDate: "28 Abr 2026",
     daysLeft: 285,
     icon: Shield,
     iconBg: "bg-[var(--brand-green-light)]",
@@ -57,40 +74,93 @@ const statusConfig: Record<InsuranceStatus, { label: string; class: string; dot:
 }
 
 // ─── SOAT PDF View ────────────────────────────────────────────────────────────
-// MVP: shows only the PDF viewer and download button.
-// Removed: structured policy data, OCR fields, share button, policy metadata.
-// TODO (renew): Add renew button here — only when status === "EXPIRED" || "EXPIRING_SOON"
-//               and when the renewal provider integration is available.
-function SoatPdfView({ onClose }: { onClose: () => void }) {
+// Req 6.3: incluir ejemplo de documento para que el usuario entienda qué verá
+function SoatPdfView({ insurance, onClose }: { insurance: Insurance; onClose: () => void }) {
   return (
     <div className="h-full flex flex-col bg-background">
       <div className="bg-card border-b border-border px-5 py-4 flex-shrink-0 flex items-center justify-between">
-        <h2 className="text-foreground font-bold text-base">Documento SOAT</h2>
+        <div>
+          <h2 className="text-foreground font-bold text-base">Documento SOAT</h2>
+          <p className="text-muted-foreground text-xs">Poliza {insurance.policyNumber}</p>
+        </div>
         <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Cerrar">
           <X size={18} className="text-foreground" />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        <div className="px-5 pt-5 pb-6">
+        <div className="px-5 pt-5 pb-6 space-y-4">
+          {/* Document example / preview */}
           <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-            {/* PDF Viewer area */}
-            <div className="bg-muted/30 min-h-[420px] flex flex-col items-center justify-center gap-3 p-8">
-              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-                <FileText size={32} className="text-muted-foreground" />
+            {/* Mock SOAT document layout */}
+            <div className="bg-[var(--brand-teal)] px-5 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-white font-bold text-sm">SOAT</p>
+                <p className="text-white/70 text-[10px]">Seguro Obligatorio de Accidentes de Transito</p>
               </div>
-              <p className="text-foreground font-semibold text-sm">SOAT.pdf</p>
-              <p className="text-muted-foreground text-xs text-center leading-relaxed">
-                Vista previa del documento
-              </p>
+              <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                <Shield size={20} className="text-white" />
+              </div>
             </div>
 
-            <div className="p-4 border-t border-border">
-              <button className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-semibold py-3.5 rounded-xl hover:bg-primary/90 active:scale-95 transition-all">
-                <Download size={15} />
-                Descargar PDF
-              </button>
+            <div className="p-4 space-y-0">
+              {[
+                { label: "No. Poliza", value: insurance.policyNumber },
+                { label: "Placa", value: "ABC·123" },
+                { label: "Clase de vehiculo", value: "Automovil particular" },
+                { label: "Vigencia desde", value: "17 Mar 2024" },
+                { label: "Vigencia hasta", value: formatDateLong(insurance.expiryDate) },
+                { label: "Aseguradora", value: "Seguros Bolivar S.A." },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex justify-between py-2.5 border-b border-border last:border-0">
+                  <p className="text-muted-foreground text-xs">{label}</p>
+                  <p className="text-foreground text-xs font-semibold text-right max-w-[180px]">{value}</p>
+                </div>
+              ))}
             </div>
+
+            {/* Coberturas */}
+            <div className="px-4 pb-4 pt-1">
+              <p className="text-muted-foreground text-[10px] font-semibold mb-2 uppercase tracking-wide">Coberturas incluidas</p>
+              <div className="space-y-1">
+                {[
+                  "Gastos medicos hasta 500 SMMLV",
+                  "Incapacidad permanente",
+                  "Muerte del ocupante",
+                  "Gastos de transporte de heridos",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                    <p className="text-muted-foreground text-xs">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer label */}
+            <div className="bg-muted/40 px-4 py-3 border-t border-border">
+              <p className="text-muted-foreground text-[10px] text-center leading-relaxed">
+                Este es un ejemplo del documento que recibiras. El PDF oficial es el que tiene validez legal.
+              </p>
+            </div>
+          </div>
+
+          {/* Download CTA */}
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                <FileText size={18} className="text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-foreground text-sm font-medium">SOAT-{insurance.policyNumber}.pdf</p>
+                <p className="text-muted-foreground text-xs">Documento oficial descargable</p>
+              </div>
+            </div>
+            {/* TODO: conectar con URL real del PDF cuando el backend lo provea */}
+            <button className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-semibold py-3.5 rounded-xl hover:bg-primary/90 active:scale-95 transition-all">
+              <Download size={15} />
+              Descargar SOAT
+            </button>
           </div>
         </div>
       </div>
@@ -99,9 +169,7 @@ function SoatPdfView({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Vehicle Policy View ──────────────────────────────────────────────────────
-// MVP: removes premium/price, policy type, and share button.
-// TODO (renew): Add renew button — only when status === "EXPIRED" || "EXPIRING_SOON"
-//               and when the renewal provider integration is available.
+// Req 6.3: incluir ejemplo de documento para que el usuario entienda qué verá
 function PolicyView({ insurance, onClose }: { insurance: Insurance; onClose: () => void }) {
   const status = statusConfig[insurance.status]
 
@@ -119,11 +187,11 @@ function PolicyView({ insurance, onClose }: { insurance: Insurance; onClose: () 
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <div className="px-5 pt-5 pb-6 space-y-4">
-          {/* Status + Expiry — primary data surface */}
+          {/* Status + Expiry */}
           <div className="bg-card rounded-2xl border border-border p-4 flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-xs mb-1">Vence el</p>
-              <p className="text-foreground font-bold text-lg">{insurance.expiryDate}</p>
+              <p className="text-foreground font-bold text-lg">{formatDateLong(insurance.expiryDate)}</p>
               {insurance.daysLeft !== undefined && insurance.status !== "ACTIVE" && (
                 <p className={cn("text-sm mt-0.5 font-medium", insurance.status === "EXPIRED" ? "text-red-600" : "text-amber-600")}>
                   {insurance.status === "EXPIRED" ? "Vencido" : `${insurance.daysLeft} dias restantes`}
@@ -136,14 +204,14 @@ function PolicyView({ insurance, onClose }: { insurance: Insurance; onClose: () 
             </div>
           </div>
 
-          {/* Policy Details */}
+          {/* Policy details */}
           <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
-            <p className="text-foreground font-semibold text-sm mb-3">Detalles</p>
+            <p className="text-foreground font-semibold text-sm mb-3">Detalles de la poliza</p>
             <div className="space-y-0">
               {[
                 { label: "Numero de poliza", value: insurance.policyNumber },
                 { label: "Aseguradora", value: "Seguros Bolivar" },
-                { label: "Vigencia hasta", value: insurance.expiryDate },
+                { label: "Vigencia hasta", value: formatDateLong(insurance.expiryDate) },
                 { label: "Estado", value: status.label },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
@@ -154,18 +222,56 @@ function PolicyView({ insurance, onClose }: { insurance: Insurance; onClose: () 
             </div>
           </div>
 
-          {/* PDF */}
+          {/* Document example */}
           <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-            <div className="bg-muted/50 h-36 flex flex-col items-center justify-center gap-2">
-              <FileText size={32} className="text-muted-foreground" />
-              <p className="text-muted-foreground text-sm font-medium">Poliza-{insurance.policyNumber}.pdf</p>
+            <div className="bg-[var(--brand-blue-light)] px-4 py-3 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Shield size={16} className="text-accent" />
+              </div>
+              <div>
+                <p className="text-foreground font-semibold text-sm">{insurance.type}</p>
+                <p className="text-muted-foreground text-[10px]">Ejemplo de documento de poliza</p>
+              </div>
             </div>
-            <div className="p-4 border-t border-border">
-              <button className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-semibold py-3 rounded-xl hover:bg-primary/90 active:scale-95 transition-all">
-                <Download size={15} />
-                Descargar PDF
-              </button>
+
+            <div className="p-4 space-y-0">
+              {[
+                { label: "Tomador", value: "Juan Perez Garcia" },
+                { label: "Placa asegurada", value: "ABC·123" },
+                { label: "Coberturas", value: "RC extracontractual, Danos propios, Asistencia 24/7" },
+                { label: "Inicio vigencia", value: "15 Dic 2024" },
+                { label: "Fin vigencia", value: formatDateLong(insurance.expiryDate) },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex flex-col py-2.5 border-b border-border last:border-0 gap-0.5">
+                  <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">{label}</p>
+                  <p className="text-foreground text-xs font-medium">{value}</p>
+                </div>
+              ))}
             </div>
+
+            <div className="bg-muted/40 px-4 py-2.5 border-t border-border">
+              <p className="text-muted-foreground text-[10px] text-center">
+                Ejemplo ilustrativo. El PDF oficial tiene validez legal.
+              </p>
+            </div>
+          </div>
+
+          {/* Download */}
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                <FileText size={18} className="text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-foreground text-sm font-medium">Poliza-{insurance.policyNumber}.pdf</p>
+                <p className="text-muted-foreground text-xs">Documento oficial descargable</p>
+              </div>
+            </div>
+            {/* TODO: conectar con URL real del PDF cuando el backend lo provea */}
+            <button className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-semibold py-3 rounded-xl hover:bg-primary/90 active:scale-95 transition-all">
+              <Download size={15} />
+              Descargar Poliza
+            </button>
           </div>
         </div>
       </div>
@@ -174,14 +280,14 @@ function PolicyView({ insurance, onClose }: { insurance: Insurance; onClose: () 
 }
 
 // ─── Assistance Panel ─────────────────────────────────────────────────────────
-// Shows call and WhatsApp options for roadside assistance.
+// Req 6.2: renombrado "Solicitar Ayuda", comunicar soporte/llamada
 function AssistancePanel({ onClose }: { onClose: () => void }) {
   return (
     <div className="h-full flex flex-col bg-background">
       <div className="bg-card border-b border-border px-5 py-4 flex-shrink-0 flex items-center justify-between">
         <div>
-          <h2 className="text-foreground font-bold text-base">Solicitar Asistencia</h2>
-          <p className="text-muted-foreground text-xs">Estamos disponibles 24/7</p>
+          <h2 className="text-foreground font-bold text-base">Solicitar Ayuda</h2>
+          <p className="text-muted-foreground text-xs">Disponibles 24/7 para asistirte</p>
         </div>
         <button onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Cerrar">
           <X size={18} className="text-foreground" />
@@ -241,7 +347,9 @@ export default function MyInsurancesTab() {
   const hasInsurances = insurances.length > 0
 
   if (selectedPolicy) {
-    if (selectedPolicy.isSoat) return <SoatPdfView onClose={() => setSelectedPolicy(null)} />
+    if (selectedPolicy.isSoat) {
+      return <SoatPdfView insurance={selectedPolicy} onClose={() => setSelectedPolicy(null)} />
+    }
     return <PolicyView insurance={selectedPolicy} onClose={() => setSelectedPolicy(null)} />
   }
 
@@ -271,7 +379,7 @@ export default function MyInsurancesTab() {
           </div>
         ) : (
           <>
-            {/* Expiry Alert Banner — no renew CTA (integration pending) */}
+            {/* Expiry Alert Banner */}
             {insurances.some((i) => i.status === "EXPIRING_SOON") && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
                 <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -310,13 +418,15 @@ export default function MyInsurancesTab() {
                       </div>
                     </div>
 
-                    {/* Expiry — primary data, always visible */}
+                    {/* Expiry — Req 6.1: fecha con mes en nombre completo */}
                     <div className="bg-muted/40 rounded-xl px-3 py-2.5 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Calendar size={13} className="text-muted-foreground" />
                         <div>
                           <p className="text-muted-foreground text-[10px]">Vence el</p>
-                          <p className="text-foreground font-semibold text-sm">{insurance.expiryDate}</p>
+                          <p className="text-foreground font-semibold text-sm">
+                            {formatDateLong(insurance.expiryDate)}
+                          </p>
                         </div>
                       </div>
                       {insurance.daysLeft !== undefined && insurance.status !== "ACTIVE" && (
@@ -333,11 +443,10 @@ export default function MyInsurancesTab() {
                   {/* Reminder Toggle */}
                   <div className="px-4 py-3 border-t border-border flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {hasReminder ? (
-                        <Bell size={14} className="text-primary" />
-                      ) : (
-                        <BellOff size={14} className="text-muted-foreground" />
-                      )}
+                      {hasReminder
+                        ? <Bell size={14} className="text-primary" />
+                        : <BellOff size={14} className="text-muted-foreground" />
+                      }
                       <p className="text-sm text-foreground font-medium">Recordatorios</p>
                     </div>
                     <button
@@ -375,17 +484,18 @@ export default function MyInsurancesTab() {
                       </button>
                     </div>
 
-                    {/* TODO (renew): Uncomment and implement when renewal integration is ready.
-                        Rule: show only when status === "EXPIRED" || status === "EXPIRING_SOON"
+                    {/* TODO (renew): Uncomment cuando la integracion de renovacion este disponible
+                        Rule: mostrar solo cuando status === "EXPIRED" || status === "EXPIRING_SOON"
                         <button className="w-full ...">Renovar</button> */}
 
+                    {/* Req 6.2: "Solicitar Ayuda" con icono de telefono */}
                     {insurance.status !== "EXPIRED" && (
                       <button
                         onClick={() => setAssistanceFor(insurance.id)}
                         className="w-full flex items-center justify-center gap-1.5 border border-border text-foreground text-xs font-medium py-2.5 rounded-xl hover:bg-muted/50 active:scale-95 transition-all"
                       >
-                        <LifeBuoy size={13} />
-                        Solicitar Asistencia
+                        <Phone size={13} />
+                        Solicitar Ayuda
                       </button>
                     )}
                   </div>

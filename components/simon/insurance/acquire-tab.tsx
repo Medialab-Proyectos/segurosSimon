@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Shield, Car, Eye, Phone, MessageCircle, UserPlus, ChevronDown, ChevronUp } from "lucide-react"
+import { Shield, Car, Eye, Phone, MessageCircle, UserPlus, ChevronDown, ChevronUp, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import InsurancePlansScreen from "./insurance-plans-screen"
 import SoatPurchaseScreen from "./soat-purchase-screen"
@@ -16,7 +16,6 @@ interface AcquireTabProps {
 }
 
 // ─── Advisor Contact Component ────────────────────────────────────────────────
-// Rule 7: must offer Call, WhatsApp, and Leave contact information.
 function AdvisorContact() {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState("")
@@ -100,7 +99,6 @@ function AdvisorContact() {
 // ─── Main Tab ─────────────────────────────────────────────────────────────────
 export default function AcquireTab({ initialView = "list", onViewReset }: AcquireTabProps) {
   const [view, setView] = useState<AcquireView>(initialView)
-  const [vehicleType, setVehicleType] = useState<"car" | "moto">("car")
 
   if (view === "soat") {
     return <SoatPurchaseScreen onBack={() => { setView("list"); onViewReset?.() }} />
@@ -110,7 +108,6 @@ export default function AcquireTab({ initialView = "list", onViewReset }: Acquir
       <InsurancePlansScreen
         onBack={() => { setView("list"); onViewReset?.() }}
         onQuote={() => setView("quote")}
-        vehicleType={vehicleType}
       />
     )
   }
@@ -124,12 +121,11 @@ export default function AcquireTab({ initialView = "list", onViewReset }: Acquir
         <div>
           <h2 className="text-foreground text-lg font-bold">Protege tu vehiculo</h2>
           <p className="text-muted-foreground text-sm mt-1 leading-relaxed">
-            Adquiere un seguro para tu carro o moto en minutos.
+            Adquiere un seguro en minutos con el respaldo de Promotec.
           </p>
         </div>
 
         {/* ─── SOAT Card ─── */}
-        {/* Price removed — NPM backend cannot provide pricing reliably (MVP) */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           <div className="relative h-40 overflow-hidden">
             <Image
@@ -159,6 +155,7 @@ export default function AcquireTab({ initialView = "list", onViewReset }: Acquir
             <p className="text-muted-foreground text-sm leading-relaxed mb-4">
               Requerido por ley para circular. Cubre accidentes, fallecimiento y gastos medicos de victimas.
             </p>
+            {/* Comprar SOAT abre WebView/iframe de Seguros Mundial */}
             <button
               onClick={() => setView("soat")}
               className="w-full bg-primary text-primary-foreground text-sm font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-95 transition-all"
@@ -171,7 +168,7 @@ export default function AcquireTab({ initialView = "list", onViewReset }: Acquir
         </div>
 
         {/* ─── Vehicle Insurance Card ─── */}
-        {/* Removed: pricing, policy type badge ("Todo Riesgo"), detailed coverage list, duplicate Cotizar CTA */}
+        {/* Req: eliminada diferenciacion automovil/motocicleta como diferenciador de planes */}
         <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
           <div className="relative h-40 overflow-hidden">
             <Image
@@ -196,31 +193,8 @@ export default function AcquireTab({ initialView = "list", onViewReset }: Acquir
 
           <div className="p-4">
             <p className="text-muted-foreground text-sm leading-relaxed mb-4">
-              Protege tu vehiculo ante robo, accidentes y responsabilidad civil. Elige el plan que se adapta a tus necesidades.
+              Protege tu vehiculo ante robo, accidentes y responsabilidad civil. Consulta los planes y solicita tu cotizacion con Promotec.
             </p>
-
-            {/* Vehicle type selector — passes selection into plans/quote flow */}
-            <div className="flex gap-2 mb-4">
-              {[
-                { id: "car" as const, label: "Automovil" },
-                { id: "moto" as const, label: "Motocicleta" },
-              ].map(({ id, label }) => (
-                <button
-                  key={id}
-                  onClick={() => setVehicleType(id)}
-                  className={cn(
-                    "flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
-                    vehicleType === id
-                      ? "border-[var(--brand-teal)] bg-[var(--brand-blue-light)] text-[var(--brand-teal)]"
-                      : "border-border bg-card text-foreground"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Single CTA — "Ver Planes" is the only entry point to quotation (rule 9) */}
             <button
               onClick={() => setView("plans")}
               className="w-full bg-accent text-accent-foreground text-sm font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-accent/90 active:scale-95 transition-all"
@@ -232,18 +206,37 @@ export default function AcquireTab({ initialView = "list", onViewReset }: Acquir
           </div>
         </div>
 
-        {/* Benefits — TODO: Replace copy with exact text from Promotec website (pending marketing approval) */}
+        {/* ─── Beneficios Promotec ─── */}
         <div className="bg-card rounded-2xl shadow-sm border border-border p-5">
-          <p className="text-foreground font-semibold text-sm mb-4">Por que Simon?</p>
+          <div className="mb-1">
+            <p className="text-foreground font-semibold text-sm">Beneficios Promotec</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Tus seguros gestionados por especialistas</p>
+          </div>
+          <div className="h-px bg-border my-3" />
           <div className="space-y-4">
             {[
-              { title: "100% digital", desc: "Compra en menos de 5 minutos", color: "bg-[var(--brand-green-light)] text-primary" },
-              { title: "Seguro y confiable", desc: "Aliados con las mejores aseguradoras", color: "bg-[var(--brand-blue-light)] text-accent" },
-              { title: "Soporte 24/7", desc: "Asesoria personalizada siempre", color: "bg-amber-50 text-amber-500" },
-            ].map(({ title, desc, color }) => (
+              {
+                title: "Respaldo de Promotec",
+                desc: "Intermediario autorizado con las mejores aseguradoras del pais",
+                color: "bg-[var(--brand-green-light)] text-primary",
+                Icon: Shield,
+              },
+              {
+                title: "100% digital",
+                desc: "Gestion de tu seguro sin filas ni papeleos, desde tu celular",
+                color: "bg-[var(--brand-blue-light)] text-accent",
+                Icon: CheckCircle,
+              },
+              {
+                title: "Asesor dedicado 24/7",
+                desc: "Te acompanamos antes, durante y despues de tu poliza",
+                color: "bg-amber-50 text-amber-500",
+                Icon: Phone,
+              },
+            ].map(({ title, desc, color, Icon }) => (
               <div key={title} className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
-                  <Shield size={18} />
+                  <Icon size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-foreground text-sm font-medium">{title}</p>

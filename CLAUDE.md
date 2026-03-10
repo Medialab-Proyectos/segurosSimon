@@ -62,3 +62,5 @@ All data is currently **hard-coded** (mock policies, plans, FAQs). No backend/AP
 - `ignoreBuildErrors: true` in `next.config.mjs` — TypeScript/build errors do not fail the build
 - Images are unoptimized (`unoptimized: true`)
 - UI language: Spanish (Colombian market)
+
+
